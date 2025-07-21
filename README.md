@@ -1,58 +1,43 @@
-⚽ Euro 2024 Analysis
-This repository contains an in-depth, data-driven analysis of the UEFA Euro 2024 tournament. Each notebook focuses on a specific aspect of the competition, from match-level stats and player performance to expected goals, shot locations, and passing dynamics.
+# ⚽ Euro 2024 Data Analysis
 
-📁 Notebooks Overview
-1. game_stats.ipynb – Match-Level Insights
-Summarizes each game with stats like goals, possession, shots, cards, and more.
+A comprehensive data-driven exploration of the **UEFA Euro 2024** tournament. This project analyzes games, players, xG metrics, shot positions, and passing strategies using Python and modern data visualization techniques.
 
-Identifies trends across matches (e.g., comeback frequency, defensive solidity).
+---
 
-Visual breakdowns of team performance per match.
+## 📁 Project Structure
 
-2. players_stats.ipynb – Player Performance
-Individual statistics for key players.
+| Notebook | Description |
+|----------|-------------|
+| `game_stats.ipynb` | **Match-Level Insights**: Key stats from each game — goals, possession, cards, and overall team performance. |
+| `players_stats.ipynb` | **Player Performance Analysis**: Individual stats, rankings, and visual comparisons of top-performing players. |
+| `Xgoals_Analysis.ipynb` | **Expected Goals (xG)**: Evaluation of shot quality and conversion rates, with insights into finishing efficiency. |
+| `shots_analysis.ipynb` | **Shot Maps by Team**: Visual pitch plots showing shot positions and outcomes (goal, saved, blocked, etc.). |
+| `passes_analysis.ipynb` | **Passing Dynamics**: Graphical analysis of team passing networks, directions, and build-up patterns. |
 
-Ranking based on goals, assists, cards, and other metrics.
+---
 
-Visual comparisons of top players using bar charts and radar plots.
+## 🧠 Key Insights
 
-3. Xgoals_Analysis.ipynb – Expected Goals (xG)
-Analyzes xG data to uncover shot quality and scoring efficiency.
+- 📊 **Team Trends**: Match-level comparisons and momentum shifts.
+- 🎯 **Player Analysis**: Impact players, goal contributors, and playmakers.
+- 🔍 **xG Evaluation**: Who’s clinical vs who’s wasteful.
+- 🗺️ **Tactical Visualization**: Heatmaps of shots, pass maps, and field control zones.
 
-Highlights teams/players that over- or under-performed.
+---
 
-Uses heatmaps and scatter plots to explain shot expectations.
+## 🛠️ Tools & Libraries
 
-4. shots_analysis.ipynb – Shooting Maps per Team
-Visual representation of shot locations on the pitch.
+- `Python 3`
+- `pandas`, `numpy`
+- `matplotlib`, `seaborn`, `plotly`
+- `mplsoccer` *(for pitch plotting, if used)*
+- `scikit-learn` *(for clustering/stats, if used)*
 
-Colored by shot outcome (e.g., goal, blocked, saved).
+---
 
-Team-level breakdowns to understand offensive strategies and threat zones.
+## 🚀 Getting Started
 
-5. passes_analysis.ipynb – Passing Dynamics
-Visualizes passing networks and directions.
-
-Highlights player roles in buildup play.
-
-Identifies patterns like wing usage, central dominance, and key pass creators.
-
-🧰 Tech Stack
-Python (Jupyter Notebooks)
-
-pandas, numpy
-
-matplotlib, seaborn, plotly
-
-scikit-learn (if clustering or advanced modeling is used)
-
-mplsoccer (if applicable for shot maps and pitch plotting)
-
-📊 Key Insights
-Game-by-game performance breakdowns.
-
-Player-level impact and standout performances.
-
-Tactical insights from xG, shot maps, and pass networks.
-
-Comparative analysis between teams and playing styles.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/euro2024-analysis.git
+   cd euro2024-analysis
