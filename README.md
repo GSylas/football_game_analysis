@@ -31,7 +31,6 @@ A comprehensive data-driven exploration of the **UEFA Euro 2024** tournament. Th
 - `pandas`, `numpy`
 - `matplotlib`, `seaborn`, `plotly`
 - `mplsoccer` *(for pitch plotting, if used)*
-- `scikit-learn` *(for clustering/stats, if used)*
 
 ---
 
