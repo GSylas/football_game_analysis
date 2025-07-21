@@ -35,9 +35,3 @@ A comprehensive data-driven exploration of the **UEFA Euro 2024** tournament. Th
 
 ---
 
-## 🚀 Getting Started
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/euro2024-analysis.git
-   cd euro2024-analysis
