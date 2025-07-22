@@ -7,3 +7,4 @@ highlight-text
 matplotlib
 seaborn
 plotly
+openpyxl
