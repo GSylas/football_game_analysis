@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy
+statsbombpy
+mplsoccer
+highlight-text
+matplotlib
+seaborn
+plotly
