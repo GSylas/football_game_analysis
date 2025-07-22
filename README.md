@@ -10,7 +10,7 @@ A comprehensive data-driven exploration of the **UEFA Euro 2024** tournament. Th
 |----------|-------------|
 | `game_stats.ipynb` | **Match-Level Insights**: Key stats from each game — goals, possession, cards, and overall team performance. |
 | `players_stats.ipynb` | **Player Performance Analysis**: Individual stats, rankings, and visual comparisons of top-performing players. |
-| `Xgoals_Analysis.ipynb` | **Expected Goals (xG)**: Evaluation of shot quality and conversion rates, with insights into finishing efficiency. |
+| `Xgoals_Analysis.ipynb` | Scorers of the Match, xG (Expected Goals) per Minute Graph & Pitch Graph - xG by Location |
 | `shots_analysis.ipynb` | **Shot Maps by Team**: Visual pitch plots showing shot positions and outcomes (goal, saved, blocked, etc.). |
 | `passes_analysis.ipynb` | **Passing Dynamics**: Graphical analysis of team passing networks, directions, and build-up patterns. |
 
