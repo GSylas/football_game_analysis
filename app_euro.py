@@ -78,7 +78,7 @@ match = match[match.period != 5]
 match_details = teams_selected(matches,match_selected)
 st.title(str(match_details['home_team'].iloc[0]) + ' ' + str(match_details['home_score'].iloc[0])+ ' : ' + str(match_details['away_score'].iloc[0])+ ' ' + str(match_details['away_team'].iloc[0]))
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Match Overview", "XGoals","Shots", "Passes"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Match Overview", "XGoals","Shots", "Passes", "Players Stats"])
 
 # First tab: Match Analysis
 with tab1:
@@ -251,7 +251,7 @@ with tab1:
     # Create the funnel chart
     fig = go.Figure()
 
-    # Home trace
+    # Home trace 
     fig.add_trace(go.Funnel(
         name=str(match_details['home_team'][0]),
         y=categories,
@@ -337,7 +337,8 @@ with tab2:
     goal_scorers = goal_scorers.sort_values('Minute')
     st.write('Score Board')
    
-    st.markdown(goal_scorers.style.hide(axis="index").to_html(), unsafe_allow_html=True)
+    st.dataframe(goal_scorers,hide_index=True)
+    #st.markdown(goal_scorers.style.hide(axis="index").to_html(), unsafe_allow_html=True)
 
     st.title('XGoals Analysis')
 
@@ -1077,4 +1078,162 @@ with tab4:
     fig.patch.set_facecolor(pitch_color)
     #set title of viz
     ax_title = ax.set_title(f'{team} Progressions into Final 3rd {len(passes_df)} passes', fontsize=30,color='white')
+    st.pyplot(fig)
+
+with tab5:
+    st.header("Shots - XGoals")
+
+    #match shots
+    match_shots = match[(match['type'] == 'Shot') & (match['period'] < 5)]
+    #most shots per player in the game
+    most_shots = pd.DataFrame(match_shots.groupby('player').agg(
+    shot_count=('type', 'count'),
+    total_xg=('shot_statsbomb_xg', 'sum')).sort_values(by='shot_count', ascending=False))
+    most_shots = most_shots.reset_index() 
+    most_shots.columns = ['Name', 'Shots', 'XGoals']
+    most_shots['XGoals'] = round(most_shots['XGoals'],2)
+
+    #most shots table
+    st.dataframe(most_shots,hide_index=True)
+    #st.markdown(most_shots.style.hide(axis="index").to_html(), unsafe_allow_html=True)
+
+    player_selected = st.selectbox("Select a player (for shot map):", most_shots['Name'])
+
+    # find locations of shots of the player
+    most_shots_player = match_shots[match_shots.player == str(player_selected)]
+    most_shots_player = most_shots_player.reset_index()
+    most_shots_player_loc = pd.DataFrame(most_shots_player.location.to_list(), columns=['x', 'y'])
+    most_shots_player['x'] = most_shots_player_loc['x']
+    most_shots_player['y'] = most_shots_player_loc['y']
+
+
+    pitch_color = '#0E1117'  # Same color as the pitch
+    line_color = '#c7d5cc'   # Pitch lines color
+    pitch = VerticalPitch(
+            pitch_type='statsbomb', 
+            half=True, 
+            pitch_color=pitch_color, 
+            pad_bottom=.5, 
+            line_color='white',
+            linewidth=.75,
+            axis=True, label=True
+        )
+
+        # Create the figure and axis
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        # Draw the pitch for the home team
+    pitch.draw(ax=ax1)
+
+    # Loop over each shot for the home team to plot the bubbles with the required conditions
+    for i in range(len(most_shots_player)):
+        x, y = most_shots_player.x[i], most_shots_player.y[i]
+        outcome = most_shots_player.shot_outcome[i]
+        size = 400 if outcome == 'Goal' else 1000 * most_shots_player.shot_statsbomb_xg[i]
+
+        if outcome == 'Goal':
+            # For Goals: Full marker using football marker
+            pitch.scatter(x, y, marker='football', s=size, ax=ax1)
+        else:
+            color = '#FF4B4B'
+            # Plot without filling the inside, only outline
+            pitch.scatter(x, y, edgecolors=color, facecolors='none', linewidth=2, s=size, ax=ax1)
+
+        # Set title for the home team plot
+    ax1.set_title('Pitch View', 
+                      size=20, color='white')
+    ax1.set_axis_off()
+
+        # Set the background color of the figure to match the pitch
+    fig.patch.set_facecolor(pitch_color)
+
+        # Display the home team plot in Streamlit
+    st.pyplot(fig)
+
+    #Successful passes
+    succ_passes = match[match['pass_outcome'].isna()]
+    succ_passes = succ_passes[succ_passes['type'] == 'Pass']
+
+    succ_passes_by_player = pd.DataFrame(succ_passes.groupby('player')['type'].count().sort_values(ascending=False))
+    succ_passes_by_player = succ_passes_by_player.reset_index()
+    succ_passes_by_player.columns = ['Name', 'Successful Passes']
+
+    #table with successful passes
+    st.title('Successful Passes')
+    st.dataframe(succ_passes_by_player,hide_index=True)
+
+    #passes location
+    pass_loc = succ_passes['location']
+    pass_loc = pd.DataFrame(pass_loc.to_list(), columns=['x', 'y'])
+    succ_passes_end_loc = succ_passes['pass_end_location']
+    pass_end_loc = pd.DataFrame(succ_passes_end_loc.to_list(), columns=['end_x', 'end_y'])
+
+    succ_passes['x'] = pass_loc['x']
+    succ_passes['y'] = pass_loc['y']
+    succ_passes['end_x'] = pass_end_loc['end_x']
+    succ_passes['end_y'] = pass_end_loc['end_y']
+
+
+    player_selected2 = st.selectbox("Select a player (for passes & heatmap):", succ_passes_by_player['Name'])
+
+    succ_passes_player = succ_passes[succ_passes.player == str(player_selected2)]
+
+
+    pass_colour='#FF4B4B'
+
+    #set up the pitch
+    pitch = Pitch(pitch_type='statsbomb', pitch_color=pitch_color, line_zorder=2, line_color=line_color)
+    fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
+    fig.set_facecolor(pitch_color)
+
+    #plot the passes
+    pitch.arrows(succ_passes_player.x, succ_passes_player.y,succ_passes_player.end_x, succ_passes_player.end_y, width=3,
+    headwidth=8, headlength=5, color=pass_colour, ax=ax, zorder=2, label = "Pass")
+
+    #plot the legend
+    ax.legend(facecolor='#c7d5cc', handlelength=5, edgecolor='None', fontsize=20, loc='best')
+
+    #set title of viz
+    ax_title = ax.set_title('Passes Map', fontsize=30,color='#c7d5cc')
+
+    st.pyplot(fig)
+
+
+    # Player heatmap
+    player_map = match[match['player'] == str(player_selected2)].reset_index()
+    
+    # Extract and validate the 'location' column
+    location_series = player_map['location']
+    
+    # Keep only values that are lists of length 2 (i.e., [x, y])
+    valid_location = location_series[location_series.apply(lambda x: isinstance(x, list) and len(x) == 2)]
+    
+    # Convert the valid location list to a DataFrame
+    location = pd.DataFrame(valid_location.to_list(), columns=['x', 'y'])
+    
+    # Create the figure and axes with the desired figsize
+    fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
+    
+    # Set up the pitch (without orientation)
+    pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_color='#c7d5cc')
+    
+    # Draw the pitch on the axes
+    pitch.draw(ax=ax)
+    
+    # Set figure background color
+    fig.patch.set_facecolor('#0E1117')
+    
+    # Plot the KDE heatmap
+    if not location.empty:
+        sns.kdeplot(
+            x=location['x'], y=location['y'],
+            fill=True, thresh=0.05, alpha=0.5, n_levels=12, cmap='Purples', ax=ax
+        )
+    else:
+        ax.text(60, 40, 'No valid location data', color='white', fontsize=16, ha='center')
+    
+    # Add title
+    ax.set_title('Heat Map', fontsize=30, color='#c7d5cc')
+    
+    # Render in Streamlit
     st.pyplot(fig)
