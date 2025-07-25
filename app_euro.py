@@ -16,6 +16,9 @@ import plotly.graph_objects as go
 from mplsoccer import VerticalPitch
 import matplotlib.patches as mpatches
 import matplotlib.patheffects as path_effects
+from functools import reduce
+from sklearn.preprocessing import MinMaxScaler
+import plotly.express as px
 
 
 st.title('Euro 2024')
@@ -71,14 +74,40 @@ def add_to_dataframe(data_frame,series,column):
 match_selected = st.selectbox("Select a match:", matches['match'])
 #call the statsbombpy events API to bring in the event data for the match
 match = sb.events(match_id=take_matchid(matches,match_selected))
+
+
+penalties = match[match.period == 5]
+penalties = penalties[penalties.shot_outcome == 'Goal']
+penalties_score = pd.DataFrame(penalties.groupby('team')['shot_outcome'].count().reset_index())
+
 # remove penalty shotout if exists
 match = match[match.period != 5]
 
+
+
+
 # general inf of the match
 match_details = teams_selected(matches,match_selected)
-st.title(str(match_details['home_team'].iloc[0]) + ' ' + str(match_details['home_score'].iloc[0])+ ' : ' + str(match_details['away_score'].iloc[0])+ ' ' + str(match_details['away_team'].iloc[0]))
+
+# score with or without penalties
+if not penalties_score.empty:
+    home_team_name = str(match_details['home_team'].iloc[0])
+    away_team_name = str(match_details['away_team'].iloc[0])
+    
+    # Safely get penalty scores with default value of 0
+    home_penalties = penalties_score.loc[penalties_score['team'] == home_team_name, 'shot_outcome']
+    away_penalties = penalties_score.loc[penalties_score['team'] == away_team_name, 'shot_outcome']
+    
+    home_penalty_score = home_penalties.values[0] if len(home_penalties) > 0 else 0
+    away_penalty_score = away_penalties.values[0] if len(away_penalties) > 0 else 0
+    
+    st.title(f"{home_team_name} {match_details['home_score'].iloc[0]} : {match_details['away_score'].iloc[0]} {away_team_name} ({home_penalty_score}:{away_penalty_score})")
+else:    
+    st.title(f"{match_details['home_team'].iloc[0]} {match_details['home_score'].iloc[0]} : {match_details['away_score'].iloc[0]} {match_details['away_team'].iloc[0]}")
+
+
 # Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Match Overview", "XGoals","Shots", "Passes", "Players Stats"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Match Overview", "XGoals","Shots", "Passes", "Player Stats", "Team Performance"])
 
 # First tab: Match Analysis
 with tab1:
@@ -1201,28 +1230,28 @@ with tab5:
 
     # Player heatmap
     player_map = match[match['player'] == str(player_selected2)].reset_index()
-    
+
     # Extract and validate the 'location' column
     location_series = player_map['location']
-    
+
     # Keep only values that are lists of length 2 (i.e., [x, y])
     valid_location = location_series[location_series.apply(lambda x: isinstance(x, list) and len(x) == 2)]
-    
+
     # Convert the valid location list to a DataFrame
     location = pd.DataFrame(valid_location.to_list(), columns=['x', 'y'])
-    
+
     # Create the figure and axes with the desired figsize
     fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
-    
+
     # Set up the pitch (without orientation)
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_color='#c7d5cc')
-    
+
     # Draw the pitch on the axes
     pitch.draw(ax=ax)
-    
+
     # Set figure background color
     fig.patch.set_facecolor('#0E1117')
-    
+
     # Plot the KDE heatmap
     if not location.empty:
         sns.kdeplot(
@@ -1231,9 +1260,242 @@ with tab5:
         )
     else:
         ax.text(60, 40, 'No valid location data', color='white', fontsize=16, ha='center')
-    
+
     # Add title
     ax.set_title('Heat Map', fontsize=30, color='#c7d5cc')
-    
+
     # Render in Streamlit
     st.pyplot(fig)
+
+
+
+with tab6:
+    st.header("Team comparison per 15 minutes")
+
+    # make a new column minute_per_15 to capture in which interval the match is
+    def interval_minute(row):
+        if row['period'] == 1 and row['minute'] > 45:
+            return 45
+        elif row['period'] == 2 and row['minute'] > 90:
+            return 90
+        elif row['period'] == 3 and row['minute'] > 105:
+            return 105
+        elif row['period'] == 4 and row['minute'] > 120:
+            return 120
+        else:
+            return row['minute']
+
+    match['interval_minute'] = match.apply(interval_minute, axis=1)
+
+    # Step 2: Make sure 0 becomes 15
+    match['minute_per_15'] = np.ceil(match['interval_minute'].clip(lower=1) / 15) * 15
+    match['minute_per_15'] = match['minute_per_15'].astype(int)
+
+    # find goals
+    teams_in_match = match['team'].unique()
+
+    # Create a function to get the opposing team
+    def get_opposing_team(team):
+        return [t for t in teams_in_match if t != team][0]
+
+    # Create goal tracking with proper own goal handling
+    match['goal'] = 0  # Initialize all as 0
+
+    # Handle regular goals
+    regular_goals = (match['shot_outcome'] == 'Goal')
+    match.loc[regular_goals, 'goal'] = 1
+
+    # Handle own goals - create separate records for the benefiting team
+    own_goals = match[match['type'] == 'Own Goal Against'].copy()
+
+    if not own_goals.empty:
+        # For each own goal, create a new record crediting the opposing team
+        own_goal_records = []
+
+        for idx, row in own_goals.iterrows():
+            # Create a new record for the opposing team
+            new_record = row.copy()
+            new_record['team'] = get_opposing_team(row['team'])
+            new_record['goal'] = 1
+            own_goal_records.append(new_record)
+
+        # Convert to DataFrame and append to match data
+        own_goal_df = pd.DataFrame(own_goal_records)
+        match_with_own_goals = pd.concat([match, own_goal_df], ignore_index=True)
+    else:
+        match_with_own_goals = match.copy()
+
+    # Now group by team and minute_per_15 to get goals
+    goals_by_team_minute = match_with_own_goals.groupby(['team', 'minute_per_15'])['goal'].sum().reset_index()
+    goals_by_team_minute.rename(columns={'goal': 'goals'}, inplace=True)
+
+    # sucessful passes per 15 minutes
+    passes_complete = match[match['type'] == 'Pass']
+    passes_complete = passes_complete[passes_complete['pass_outcome'].isnull()]
+    passes_complete = passes_complete.groupby(['team', 'minute_per_15'])['type'].count().reset_index()
+    passes_complete.rename(columns={'type': 'successful_passes'}, inplace=True)
+
+
+    # xgoals per 15 minutes
+    xgoals_by_team_minute = match.groupby(['team', 'minute_per_15'])['shot_statsbomb_xg'].sum().reset_index()
+    xgoals_by_team_minute.rename(columns={'shot_statsbomb_xg': 'xgoals'}, inplace=True)
+
+    # shots per 15 minutes
+    shots = (
+        match[match['shot_outcome'].notnull()]
+        .groupby(['team', 'minute_per_15'])['shot_outcome']
+        .count()
+        .reset_index(name='shots')
+    )
+
+    teams = match['team'].unique()
+    minutes = match['minute_per_15'].unique()
+
+    full_index = pd.MultiIndex.from_product([teams, minutes], names=['team', 'minute_per_15'])
+    shots = shots.set_index(['team', 'minute_per_15']).reindex(full_index, fill_value=0).reset_index()
+
+
+    # shots on target per 15 minutes
+    filtered = match[match['shot_outcome'].isin(['Saved', 'Goal'])]
+
+    # Step 2: Group and count
+    shots_on_tar = (
+        filtered.groupby(['team', 'minute_per_15'])['shot_outcome']
+        .count()
+        .reset_index(name='shots_on_tar')
+    )
+
+    # Step 3: Create all combinations of team × minute_per_15
+    teams = match['team'].unique()
+    minutes = match['minute_per_15'].unique()
+    full_index = pd.MultiIndex.from_product([teams, minutes], names=['team', 'minute_per_15'])
+
+    # Step 4: Reindex to include 0s where no 'Saved' or 'Goal' shots occurred
+    shots_on_tar = shots_on_tar.set_index(['team', 'minute_per_15']).reindex(full_index, fill_value=0).reset_index()
+
+    # combine all data in one table
+    # List of all DataFrames to merge
+    dfs = [goals_by_team_minute, xgoals_by_team_minute, passes_complete, shots, shots_on_tar]
+
+    # Merge them on 'team' and 'minute_per_15'
+    stats_per_15 = reduce(lambda left, right: pd.merge(left, right, on=['team', 'minute_per_15'], how='outer'), dfs)
+
+    # Fill NaNs with 0 for any missing values (optional, if all columns are numeric)
+    stats_per_15 = stats_per_15.fillna(0)
+
+
+    # put weights per category to check the teams performance
+    weights = {
+        'goals': 0.35,
+        'xgoals': 0.25,
+        'shots_on_tar': 0.20,
+        'shots': 0.15,
+        'successful_passes': 0.10
+    }
+
+    # Columns to normalize and weight
+    metrics = ['goals', 'xgoals', 'shots_on_tar', 'shots', 'successful_passes']
+
+    # Normalize each metric
+    scaler = MinMaxScaler()
+    stats_per_15_scaled = pd.DataFrame(scaler.fit_transform(stats_per_15[metrics]), columns=[f"{col}_norm" for col in metrics])
+
+    # Apply weights and compute performance score
+    for metric in metrics:
+        stats_per_15[f"{metric}_norm"] = stats_per_15_scaled[f"{metric}_norm"] * weights[metric]
+
+    # Sum all normalized weighted metrics into a final score
+    stats_per_15['performance_score'] = stats_per_15[[f"{m}_norm" for m in metrics]].sum(axis=1)
+
+
+    # Normalize performance score within each minute interval
+    stats_per_15['normalized_score'] = stats_per_15.groupby('minute_per_15')['performance_score'].transform(
+        lambda x: x / x.sum() if x.sum() != 0 else 0
+    )
+
+
+    # Compute cumulative goals per team
+    goals_cum = goals_by_team_minute.copy()
+    goals_cum['cumulative_goals'] = goals_cum.groupby('team')['goals'].cumsum()
+
+
+    fig = px.bar(
+        goals_cum,
+        x='minute_per_15',
+        y='cumulative_goals',
+        color='team',
+        barmode='group',
+        title='Score per 15-Minute Interval by Team',
+        labels={'minute_per_15': 'Minute Interval', 'cumulative_goals': 'Goals'},
+        color_discrete_map={
+            home_team : home_color,  
+            away_team : away_color     
+        }
+    )
+
+    # Apply dark theme
+    fig.update_layout(
+        plot_bgcolor='#0E1117',
+        paper_bgcolor='#0E1117',
+        font=dict(color='#c7d5cc'),
+        xaxis=dict(type='category', showgrid=False, color='#c7d5cc'),
+        yaxis=dict(gridcolor='#333', color='#c7d5cc'),
+        legend=dict(font=dict(color='#c7d5cc')),
+        title_font=dict(color='#c7d5cc')
+    )
+
+    fig.update_traces(
+        texttemplate='%{y}',                  
+        textposition='inside',
+        insidetextfont=dict(color='#0E1117')    
+    )
+
+
+
+    # Render in Streamlit
+    st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+    # Plot the stacked percentage chart
+    fig = px.bar(
+        stats_per_15,
+        x='minute_per_15',
+        y='normalized_score',
+        color='team',
+        barmode='stack',
+        title='Team Performance Trend Over Time',
+        labels={'minute_per_15': 'Minute Interval', 'normalized_score': 'Performance Score'},
+        height=500,
+        color_discrete_map={
+            home_team : home_color,  
+            away_team : away_color     
+        }
+    )
+
+    # Apply dark theme
+    fig.update_layout(
+        plot_bgcolor='#0E1117',
+        paper_bgcolor='#0E1117',
+        font=dict(color='#c7d5cc'),
+        xaxis=dict(type='category', showgrid=False, color='#c7d5cc'),
+        yaxis=dict(showgrid=True, gridcolor='#333', color='#c7d5cc'),
+        legend=dict(font=dict(color='#c7d5cc')),
+        title_font=dict(color='#c7d5cc')
+    )
+
+
+    fig.update_traces(
+        texttemplate='%{y:.2f}',                  
+        textposition='inside',
+        insidetextfont=dict(color='#0E1117')     
+    )
+
+    # Render in Streamlit
+    st.plotly_chart(fig, use_container_width=True)
+
+
+    st.write("The Performance Score is \
+    a custom metric that evaluates each team's overall impact during a match. It combines key statistics — goals, expected goals (xG), successful passes, total shots \
+    and shots on target — using weighted contributions. All values are normalized to ensure fair comparison across teams and time intervals")

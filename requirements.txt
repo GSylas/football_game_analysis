@@ -8,3 +8,5 @@ matplotlib
 seaborn
 plotly
 openpyxl
+sklearn
+functools
