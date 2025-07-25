@@ -13,6 +13,7 @@ A comprehensive data-driven exploration of the **UEFA Euro 2024** tournament. Th
 | `Xgoals_Analysis.ipynb` | xG Analysis : Scorers of the Match, xG (Expected Goals) per Minute Graph & Pitch Graph - xG by Location |
 | `shots_analysis.ipynb` | Shot Maps by Team : Visual pitch plots showing shot positions and outcomes (goal, saved, blocked, etc.). |
 | `passes_analysis.ipynb` | Passing Dynamics : Total passes breakdown, build-up patterns and key passing insights. |
+| `team_perfomance_15.ipynb` | Performance score based on key stats to compare teams per 15 minutes interval. |
 
 ---
 
