@@ -8,5 +8,4 @@ matplotlib
 seaborn
 plotly
 openpyxl
-scikit-learns
-functools
+scikit-learn
