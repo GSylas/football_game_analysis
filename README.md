@@ -4,6 +4,8 @@ A comprehensive data-driven exploration of the **UEFA Euro 2024** tournament. Th
 
 ---
 
+📊 -> https://euro24gamestats.streamlit.app/
+
 ## 📁 Project Structure
 
 | Notebook | Description |
