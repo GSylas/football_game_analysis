@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 #from mplsoccer import Pitch
 from mplsoccer import VerticalPitch,Pitch
-from mplsoccer.pitch import Pitch
+from mplsoccer import Pitch
 from highlight_text import ax_text, fig_text
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
