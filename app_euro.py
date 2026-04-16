@@ -45,7 +45,10 @@ teams = teams.merge(team_colors, how='inner', on='Team')
 matches = euro_2024_matches.filter(['match_id','match_date','home_team','away_team','competition_stage','home_score','away_score','period'])
 matches['match'] = matches['competition_stage'] + ' ' + matches['home_team'] + ' - ' + matches['away_team'] 
 
-matches['match_date'] = pd.to_datetime(matches['match_date'], infer_datetime_format=True)
+matches['match_date'] = pd.to_datetime(
+    matches['match_date'],
+    errors='coerce'
+)
 matches = matches.sort_values(by='match_date', ascending=False)
 
 def take_matchid(df, value):
