@@ -685,7 +685,7 @@ with tab3:
     on_target = shots_home[shots_home['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
     off_target = shots_home[~shots_home['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
 
-    col_pie, _ = st.columns([1, 2])
+    _, col_pie, _ = st.columns([1, 2, 1])
     with col_pie:
         fig = go.Figure(data=[go.Pie(
             labels=['On Target', 'Off Target'],
@@ -766,7 +766,7 @@ with tab3:
     on_target = shots_away[shots_away['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
     off_target = shots_away[~shots_away['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
 
-    col_pie2, _ = st.columns([1, 2])
+    _, col_pie2, _ = st.columns([1, 2, 1])
     with col_pie2:
         fig = go.Figure(data=[go.Pie(
             labels=['On Target', 'Off Target'],
@@ -891,7 +891,7 @@ with tab4:
     succesfull = passes_home[passes_home['pass_outcome'].isna()].shape[0]
     not_succesfull = passes_home[~passes_home['pass_outcome'].isna()].shape[0]
 
-    col_pass1, _ = st.columns([1, 2])
+    _, col_pass1, _ = st.columns([1, 2, 1])
     with col_pass1:
         fig = go.Figure(data=[go.Pie(
             labels=['Successful', 'Unsuccessful'],
@@ -1075,7 +1075,7 @@ with tab4:
     succesfull = passes_away[passes_away['pass_outcome'].isna()].shape[0]
     not_succesfull = passes_away[~passes_away['pass_outcome'].isna()].shape[0]
 
-    col_pass2, _ = st.columns([1, 2])
+    _, col_pass2, _ = st.columns([1, 2, 1])
     with col_pass2:
         fig = go.Figure(data=[go.Pie(
             labels=['Successful', 'Unsuccessful'],
