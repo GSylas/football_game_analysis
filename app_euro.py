@@ -372,9 +372,10 @@ with tab1:
     home_log_scaled = [np.log1p(x) / np.log1p(home_total) * 100 for x in home]
     away_log_scaled = [np.log1p(x) / np.log1p(away_total) * 100 for x in away]
 
+    decimal_format = {'XGoals': '.2f', 'Ball Possession': '.1f'}
     def format_value(value, category):
-        if category == 'XGoals':
-            return f'{value:.2f}'
+        if category in decimal_format:
+            return f'{value:{decimal_format[category]}}'
         return f'{int(value)}'
 
     def readable_text_color(hex_color):
@@ -753,8 +754,9 @@ with tab3:
     other_patch = mpatches.Patch(color='orange', label='Out')
     ax.legend(handles=[goal_patch, blocked_patch, other_patch], loc='upper right', fontsize=12, facecolor='white', edgecolor='black')
 
-    # Use st.pyplot to display the plot in Streamlit
-    st.pyplot(fig)
+    _col, _ = st.columns(2)
+    with _col:
+        st.pyplot(fig)
 
     num_shots = len(shots_away)
 
@@ -829,8 +831,9 @@ with tab3:
     other_patch = mpatches.Patch(color='orange', label='Out')
     ax.legend(handles=[goal_patch, blocked_patch, other_patch], loc='upper right', fontsize=12, facecolor='white', edgecolor='black')
 
-    # Use st.pyplot to display the plot in Streamlit
-    st.pyplot(fig)
+    _col2, _ = st.columns(2)
+    with _col2:
+        st.pyplot(fig)
 
 
 
@@ -924,11 +927,11 @@ with tab4:
     # Set the background color of the figure to match the pitch
     fig.patch.set_facecolor(pitch_color)
 
-    # Set the title
     ax.set_title(f"Pass Network of: {match_details['home_team'].iloc[0]}", color='white', size=16)
 
-    # Display the figure in Streamlit
-    st.pyplot(fig)
+    _cn1, _ = st.columns(2)
+    with _cn1:
+        st.pyplot(fig)
 
     match_pass_perc = passes_home['location']
     match_pass_perc = pd.DataFrame(match_pass_perc.to_list(), columns=['x', 'y'])
@@ -975,11 +978,13 @@ with tab4:
     # fill in the bin statistics from df and plot the heatmap
     bin_statistic['statistic'] = df_pass_perc[['Def 3rd (%)', 'Mid 3rd (%)', 'Att 3rd (%)']].values
     heatmap = pitch.heatmap(bin_statistic, ax=ax, cmap='Purples', vmin=vmin, vmax=vmax)
-    annotate = pitch.label_heatmap(bin_statistic, color='white', #fontproperties=fm.prop,
+    annotate = pitch.label_heatmap(bin_statistic, color='white',
                                    path_effects=path_eff, fontsize=50, ax=ax,
                                    str_format='{0:.0f}%', ha='center', va='center')
-    
-    st.pyplot(fig)
+
+    _ch1, _ = st.columns(2)
+    with _ch1:
+        st.pyplot(fig)
 
 
 
@@ -1013,9 +1018,9 @@ with tab4:
     fig.patch.set_facecolor(pitch_color)
     #set title of viz
     ax_title = ax.set_title(f'{team} Progressions into Final 3rd {len(passes_df)} passes', fontsize=30,color='white')
-    st.pyplot(fig)
-
-
+    _cp1, _ = st.columns(2)
+    with _cp1:
+        st.pyplot(fig)
 
     event_pass = match[['minute', 'second', 'team', 'location', 'period', 'type', 'pass_outcome', 'player', 'position', 'pass_end_location']]
     event_pass_away=event_pass[event_pass['team']==str(match_details['away_team'].iloc[0])]
@@ -1106,11 +1111,11 @@ with tab4:
     # Set the background color of the figure to match the pitch
     fig.patch.set_facecolor(pitch_color)
     
-    # Set the title
     ax.set_title(f"Pass Network of: {match_details['away_team'].iloc[0]}", color='white', size=16)
-    
-    # Display the figure in Streamlit
-    st.pyplot(fig)
+
+    _cn2, _ = st.columns(2)
+    with _cn2:
+        st.pyplot(fig)
 
 
     match_pass_perc = passes_away['location']
@@ -1156,8 +1161,9 @@ with tab4:
                                    path_effects=path_eff, fontsize=50, ax=ax,
                                    str_format='{0:.0f}%', ha='center', va='center')
 
-    st.pyplot(fig)
-
+    _ch2, _ = st.columns(2)
+    with _ch2:
+        st.pyplot(fig)
 
 
 
@@ -1191,7 +1197,9 @@ with tab4:
     fig.patch.set_facecolor(pitch_color)
     #set title of viz
     ax_title = ax.set_title(f'{team} Progressions into Final 3rd {len(passes_df)} passes', fontsize=30,color='white')
-    st.pyplot(fig)
+    _cp2, _ = st.columns(2)
+    with _cp2:
+        st.pyplot(fig)
 
 with tab5:
 
@@ -1259,8 +1267,9 @@ with tab5:
         # Set the background color of the figure to match the pitch
     fig.patch.set_facecolor(pitch_color)
 
-        # Display the home team plot in Streamlit
-    st.pyplot(fig)
+    _cps1, _ = st.columns(2)
+    with _cps1:
+        st.pyplot(fig)
 
     #Successful passes
     succ_passes = match[match['pass_outcome'].isna()]
@@ -1308,8 +1317,9 @@ with tab5:
     #set title of viz
     ax_title = ax.set_title('Passes Map', fontsize=30,color='#c7d5cc')
 
-    st.pyplot(fig)
-
+    _cpm, _ = st.columns(2)
+    with _cpm:
+        st.pyplot(fig)
 
     # Player heatmap
     player_map = match[match['player'] == str(player_selected2)].reset_index()
@@ -1344,11 +1354,11 @@ with tab5:
     else:
         ax.text(60, 40, 'No valid location data', color='white', fontsize=16, ha='center')
 
-    # Add title
     ax.set_title('Heat Map', fontsize=30, color='#c7d5cc')
 
-    # Render in Streamlit
-    st.pyplot(fig)
+    _cphm, _ = st.columns(2)
+    with _cphm:
+        st.pyplot(fig)
 
 
 
