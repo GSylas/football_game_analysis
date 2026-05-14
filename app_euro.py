@@ -754,7 +754,7 @@ with tab3:
     other_patch = mpatches.Patch(color='orange', label='Out')
     ax.legend(handles=[goal_patch, blocked_patch, other_patch], loc='upper right', fontsize=12, facecolor='white', edgecolor='black')
 
-    _col, _ = st.columns(2)
+    _, _col, _ = st.columns([1, 2, 1])
     with _col:
         st.pyplot(fig)
 
@@ -831,7 +831,7 @@ with tab3:
     other_patch = mpatches.Patch(color='orange', label='Out')
     ax.legend(handles=[goal_patch, blocked_patch, other_patch], loc='upper right', fontsize=12, facecolor='white', edgecolor='black')
 
-    _col2, _ = st.columns(2)
+    _, _col2, _ = st.columns([1, 2, 1])
     with _col2:
         st.pyplot(fig)
 
@@ -929,7 +929,7 @@ with tab4:
 
     ax.set_title(f"Pass Network of: {match_details['home_team'].iloc[0]}", color='white', size=16)
 
-    _cn1, _ = st.columns(2)
+    _, _cn1, _ = st.columns([1, 2, 1])
     with _cn1:
         st.pyplot(fig)
 
@@ -982,7 +982,7 @@ with tab4:
                                    path_effects=path_eff, fontsize=50, ax=ax,
                                    str_format='{0:.0f}%', ha='center', va='center')
 
-    _ch1, _ = st.columns(2)
+    _, _ch1, _ = st.columns([1, 2, 1])
     with _ch1:
         st.pyplot(fig)
 
@@ -1018,7 +1018,7 @@ with tab4:
     fig.patch.set_facecolor(pitch_color)
     #set title of viz
     ax_title = ax.set_title(f'{team} Progressions into Final 3rd {len(passes_df)} passes', fontsize=30,color='white')
-    _cp1, _ = st.columns(2)
+    _, _cp1, _ = st.columns([1, 2, 1])
     with _cp1:
         st.pyplot(fig)
 
@@ -1113,7 +1113,7 @@ with tab4:
     
     ax.set_title(f"Pass Network of: {match_details['away_team'].iloc[0]}", color='white', size=16)
 
-    _cn2, _ = st.columns(2)
+    _, _cn2, _ = st.columns([1, 2, 1])
     with _cn2:
         st.pyplot(fig)
 
@@ -1161,7 +1161,7 @@ with tab4:
                                    path_effects=path_eff, fontsize=50, ax=ax,
                                    str_format='{0:.0f}%', ha='center', va='center')
 
-    _ch2, _ = st.columns(2)
+    _, _ch2, _ = st.columns([1, 2, 1])
     with _ch2:
         st.pyplot(fig)
 
@@ -1197,7 +1197,7 @@ with tab4:
     fig.patch.set_facecolor(pitch_color)
     #set title of viz
     ax_title = ax.set_title(f'{team} Progressions into Final 3rd {len(passes_df)} passes', fontsize=30,color='white')
-    _cp2, _ = st.columns(2)
+    _, _cp2, _ = st.columns([1, 2, 1])
     with _cp2:
         st.pyplot(fig)
 
@@ -1267,7 +1267,7 @@ with tab5:
         # Set the background color of the figure to match the pitch
     fig.patch.set_facecolor(pitch_color)
 
-    _cps1, _ = st.columns(2)
+    _, _cps1, _ = st.columns([1, 2, 1])
     with _cps1:
         st.pyplot(fig)
 
@@ -1317,7 +1317,7 @@ with tab5:
     #set title of viz
     ax_title = ax.set_title('Passes Map', fontsize=30,color='#c7d5cc')
 
-    _cpm, _ = st.columns(2)
+    _, _cpm, _ = st.columns([1, 2, 1])
     with _cpm:
         st.pyplot(fig)
 
@@ -1356,7 +1356,7 @@ with tab5:
 
     ax.set_title('Heat Map', fontsize=30, color='#c7d5cc')
 
-    _cphm, _ = st.columns(2)
+    _, _cphm, _ = st.columns([1, 2, 1])
     with _cphm:
         st.pyplot(fig)
 
