@@ -1,34 +1,92 @@
 import streamlit as st
 import pandas as pd
 from statsbombpy import sb
-import pandas as pd
 import numpy as np
-#from mplsoccer import Pitch
-from mplsoccer import VerticalPitch,Pitch
-from mplsoccer import Pitch
+from mplsoccer import VerticalPitch, Pitch
 from highlight_text import ax_text, fig_text
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
 import seaborn as sns
-import math
 import plotly.graph_objects as go
-from mplsoccer import VerticalPitch
 import matplotlib.patches as mpatches
-import matplotlib.patheffects as path_effects
 from functools import reduce
 from sklearn.preprocessing import MinMaxScaler
 import plotly.express as px
 
+st.set_page_config(
+    page_title="Euro 2024 Analytics",
+    page_icon="⚽",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-st.title('Euro 2024')
+st.markdown("""
+<style>
+/* ── Global font ── */
+html, body, [class*="css"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+footer { visibility: hidden; }
+#MainMenu { visibility: hidden; }
+
+/* ── Tab bar ── */
+button[data-baseweb="tab"] {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    padding: 10px 22px !important;
+    letter-spacing: 0.5px;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    border-bottom: 3px solid #FF4B4B !important;
+    color: #FF4B4B !important;
+}
+
+/* ── Metric cards ── */
+[data-testid="metric-container"] {
+    border: 1px solid #2a2f3e;
+    border-radius: 12px;
+    padding: 18px 14px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+[data-testid="stMetricValue"] { font-size: 26px !important; font-weight: 800 !important; }
+[data-testid="stMetricLabel"] { font-size: 12px !important; font-weight: 500 !important; }
+
+/* ── Selectbox ── */
+[data-testid="stSelectbox"] label { font-weight: 600; font-size: 14px; }
+
+/* ── Dataframe ── */
+[data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; }
+
+/* ── Section heading helper ── */
+.section-title {
+    font-size: 20px; font-weight: 700; letter-spacing: 0.5px;
+    border-left: 4px solid #FF4B4B; padding-left: 12px;
+    margin: 24px 0 12px 0;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    '<div style="text-align:center;padding:28px 0 8px 0;">'
+    '<span style="font-size:48px;font-weight:900;letter-spacing:3px;color:#e0e6f0;">⚽ EURO 2024</span><br>'
+    '<span style="font-size:13px;color:#9aa0b0;letter-spacing:4px;text-transform:uppercase;">Match Analytics Dashboard</span>'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+@st.cache_data
+def load_matches():
+    return sb.matches(competition_id=55, season_id=282)
+
+@st.cache_data
+def load_events(match_id):
+    return sb.events(match_id=match_id)
 
 #call the statsbombpy API to get a list of matches for a given competition
 #Euro 2024 competition id = 55, season id = 282
-euro_2024_matches = sb.matches(competition_id=55, season_id=282)
+euro_2024_matches = load_matches()
 
-#print the first 5 matches listed
-euro_2024_matches.head(5)
 
 #concat home and away teams to keep the unique teams that participated to the tournament
 home_team = euro_2024_matches['home_team']
@@ -73,10 +131,10 @@ def add_to_dataframe(data_frame,series,column):
     # Update the main DataFrame with new columns
     return data_frame.join(df_group_by_1)
 
-# Dropdown for selecting a match
-match_selected = st.selectbox("Select a match:", matches['match'])
+st.markdown("---")
+match_selected = st.selectbox("🗓️ Select a match:", matches['match'])
 #call the statsbombpy events API to bring in the event data for the match
-match = sb.events(match_id=take_matchid(matches,match_selected))
+match = load_events(match_id=take_matchid(matches,match_selected))
 
 
 penalties = match[match.period == 5]
@@ -92,41 +150,69 @@ match = match[match.period != 5]
 # general inf of the match
 match_details = teams_selected(matches,match_selected)
 
-# score with or without penalties
+# extract team colors early so they're available for the score banner and all tabs
+home_team = str(match_details['home_team'].iloc[0])
+away_team = str(match_details['away_team'].iloc[0])
+home_color = teams[teams['Team'] == home_team]['First_Color'].values[0]
+away_color = teams[teams['Team'] == away_team]['Second_Color'].values[0]
+
+home_score = int(match_details['home_score'].iloc[0])
+away_score = int(match_details['away_score'].iloc[0])
+stage = str(match_details['competition_stage'].iloc[0])
+
+# Penalty shootout suffix
 if not penalties_score.empty:
-    home_team_name = str(match_details['home_team'].iloc[0])
-    away_team_name = str(match_details['away_team'].iloc[0])
-    
-    # Safely get penalty scores with default value of 0
-    home_penalties = penalties_score.loc[penalties_score['team'] == home_team_name, 'shot_outcome']
-    away_penalties = penalties_score.loc[penalties_score['team'] == away_team_name, 'shot_outcome']
-    
-    home_penalty_score = home_penalties.values[0] if len(home_penalties) > 0 else 0
-    away_penalty_score = away_penalties.values[0] if len(away_penalties) > 0 else 0
-    
-    st.title(f"{home_team_name} {match_details['home_score'].iloc[0]} : {match_details['away_score'].iloc[0]} {away_team_name} ({home_penalty_score}:{away_penalty_score})")
-else:    
-    st.title(f"{match_details['home_team'].iloc[0]} {match_details['home_score'].iloc[0]} : {match_details['away_score'].iloc[0]} {match_details['away_team'].iloc[0]}")
+    home_pen = penalties_score.loc[penalties_score['team'] == home_team, 'shot_outcome']
+    away_pen = penalties_score.loc[penalties_score['team'] == away_team, 'shot_outcome']
+    home_penalty_score = int(home_pen.values[0]) if len(home_pen) > 0 else 0
+    away_penalty_score = int(away_pen.values[0]) if len(away_pen) > 0 else 0
+    pen_txt = f"Pens: {home_penalty_score} – {away_penalty_score}"
+else:
+    pen_txt = ""
+
+# Score banner using columns (avoids unsafe_allow_html tooltip leak)
+st.markdown(f"""
+<div style="background:linear-gradient(135deg,{home_color}22,#0d1117 45%,{away_color}22);
+     border:1px solid #2a2f3e; border-radius:16px; padding:6px 24px 14px 24px;
+     margin:12px 0 20px 0; box-shadow:0 4px 20px rgba(0,0,0,0.6);">
+<p style="text-align:center;margin:8px 0 4px 0;font-size:11px;
+   color:#9aa0b0;letter-spacing:3px;text-transform:uppercase;">{stage}</p>
+</div>""", unsafe_allow_html=True)
+
+c_home, c_score, c_away = st.columns([3, 2, 3])
+with c_home:
+    st.markdown(
+        f'<p style="text-align:right;font-size:28px;font-weight:800;'
+        f'color:{home_color};margin:0;padding:0 0 4px 0;">{home_team}</p>',
+        unsafe_allow_html=True
+    )
+with c_score:
+    score_html = (
+        f'<p style="text-align:center;font-size:58px;font-weight:900;'
+        f'color:#ffffff;letter-spacing:6px;margin:0;line-height:1.1;">'
+        f'{home_score} – {away_score}</p>'
+    )
+    if pen_txt:
+        score_html += (
+            f'<p style="text-align:center;font-size:14px;color:#aaa;margin:4px 0 0 0;">'
+            f'{pen_txt}</p>'
+        )
+    st.markdown(score_html, unsafe_allow_html=True)
+with c_away:
+    st.markdown(
+        f'<p style="text-align:left;font-size:28px;font-weight:800;'
+        f'color:{away_color};margin:0;padding:0 0 4px 0;">{away_team}</p>',
+        unsafe_allow_html=True
+    )
 
 
 # Tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Match Overview", "XGoals","Shots", "Passes", "Player Stats", "Team Performance"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📋 Match Overview", "📈 xGoals", "🎯 Shots", "🔄 Passes", "👤 Player Stats", "📊 Team Performance"
+])
 
 # First tab: Match Analysis
 with tab1:
-    st.header("Match Overview")
-    
-    # Dropdown for selecting a match
-   # match_selected = st.selectbox("Select a match:", matches['match'])
-
-    #call the statsbombpy events API to bring in the event data for the match
-    #match = sb.events(match_id=take_matchid(matches,match_selected))
-    # remove penalty shotout if exists
-    #match = match[match.period != 5]
-
-    # general inf of the match
-    #match_details = teams_selected(matches,match_selected)
-
     # Create a DataFrame with the correct index
     index = [str(match_details['home_team'].iloc[0]), str(match_details['away_team'].iloc[0])]
     stats = pd.DataFrame(index=index)
@@ -185,6 +271,8 @@ with tab1:
             swapped_saves = pd.Series([saved_shots.iloc[0], 0], index=[home_team, away_team])
         else:
             swapped_saves = pd.Series([0, saved_shots.iloc[0]], index=[home_team, away_team])
+    else:
+        swapped_saves = pd.Series([0, 0], index=[home_team, away_team])
 
     # Add to the dataframe
     stats = add_to_dataframe(stats, swapped_saves, 'Goalkeeper Saves')
@@ -220,26 +308,14 @@ with tab1:
     free_kick = free_kick.groupby('team')['type'].count()
     stats = add_to_dataframe(stats,free_kick,'Free Kicks')
 
-    # Yellow Cards
-    #yellow_card = match[(match['foul_committed_card'] == 'Yellow Card')]
-    #yellow_card = yellow_card.groupby('team')['type'].count()
-    #stats = add_to_dataframe(stats,yellow_card,'Yellow Cards')
-#
-    ## Red Cards
-    #red_card = match[(match['foul_committed_card'].isin(['Red Card','Second Yellow']))]
-    #red_card = red_card.groupby('team')['type'].count()
-    #stats = add_to_dataframe(stats,red_card,'Red Cards')
-
-
-    # Reorder the dataframe and make the columns rows
     # Transpose the DataFrame
     stats_transposed = stats.T
 
     # Reformat data for the given code
     transformed_data = {
         'Stat': stats_transposed.index,
-        str(match_details['home_team'].iloc[0]): stats_transposed[str(match_details['home_team'].iloc[0])],
-        str(match_details['away_team'].iloc[0]): stats_transposed[str(match_details['away_team'].iloc[0])]
+        home_team: stats_transposed[home_team],
+        away_team: stats_transposed[away_team]
     }
 
     # Create DataFrame for visualization
@@ -247,70 +323,79 @@ with tab1:
     df_transformed = df_transformed.reset_index(drop=True)
     df_transformed = df_transformed.fillna(0)
 
-    home_team = str(match_details['home_team'].iloc[0])
-    home_color = teams[teams['Team'] == home_team]['First_Color'].values[0]
-    away_team = str(match_details['away_team'].iloc[0])
-    away_color = teams[teams['Team'] == away_team]['Second_Color'].values[0]
-
-
-    #st.title(str(match_details['home_team'].iloc[0]) + ' ' + str(match_details['home_score'].iloc[0])+ ' : ' + str(match_details['away_score'].iloc[0])+ ' ' + str(match_details['away_team'].iloc[0]))
-
-    #set index to 0
     match_details = match_details.reset_index(drop=True)
-   
 
-    
+    # --- Key metrics row ---
+    st.markdown('<div class="section-title">Key Stats</div>', unsafe_allow_html=True)
+    def get_stat(name):
+        row = df_transformed[df_transformed['Stat'] == name]
+        if row.empty:
+            return 0, 0
+        return row[home_team].values[0], row[away_team].values[0]
+
+    h_poss, a_poss = get_stat('Ball Possession')
+    h_xg, a_xg   = get_stat('XGoals')
+    h_sh, a_sh    = get_stat('Total Shots')
+    h_sot, a_sot  = get_stat('Shots On Target')
+    h_ps, a_ps    = get_stat('Passes Completed')
+
+    m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 = st.columns(10)
+    m1.metric(f"🟡 {home_team[:12]}", ""); m2.metric("Possession", f"{h_poss:.1f}%")
+    m3.metric("xGoals", f"{h_xg:.2f}"); m4.metric("Shots", int(h_sh)); m5.metric("On Target", int(h_sot))
+    m6.metric(f"🔵 {away_team[:12]}", ""); m7.metric("Possession", f"{a_poss:.1f}%")
+    m8.metric("xGoals", f"{a_xg:.2f}"); m9.metric("Shots", int(a_sh)); m10.metric("On Target", int(a_sot))
+
+    st.markdown("---")
+    st.markdown('<div class="section-title">Match Stats Comparison</div>', unsafe_allow_html=True)
+
     categories = df_transformed['Stat'].to_list()
-    home = df_transformed[str(match_details['home_team'][0])].to_list()
-    away = df_transformed[str(match_details['away_team'][0])].to_list()
+    home = df_transformed[home_team].to_list()
+    away = df_transformed[away_team].to_list()
 
-
-    # Normalize the values (convert to percentages)
     home_total = np.sum(home)
     away_total = np.sum(away)
 
-    # Apply logarithmic scaling for bar size
     home_log_scaled = [np.log1p(x) / np.log1p(home_total) * 100 for x in home]
     away_log_scaled = [np.log1p(x) / np.log1p(away_total) * 100 for x in away]
 
-    # Function to format values (float rounded to 2 decimals for 'XGoals', int for other categories)
     def format_value(value, category):
         if category == 'XGoals':
             return f'{value:.2f}'
-        else:
-            return f'{int(value)}'
+        return f'{int(value)}'
 
-    # Create the funnel chart
     fig = go.Figure()
 
-    # Home trace 
     fig.add_trace(go.Funnel(
-        name=str(match_details['home_team'][0]),
+        name=home_team,
         y=categories,
-        x=home_log_scaled,  # Use log-scaled values for visualization
-        text=[format_value(value, category) for value, category in zip(home, categories)],  # Format based on category
+        x=home_log_scaled,
+        text=[format_value(v, c) for v, c in zip(home, categories)],
         textinfo='text',
-        marker=dict(color=home_color)
+        textfont=dict(size=14, color='white'),
+        marker=dict(color=home_color, line=dict(width=1.5, color='rgba(255,255,255,0.3)'))
     ))
 
-    # Away trace
     fig.add_trace(go.Funnel(
-        name=str(match_details['away_team'][0]),
+        name=away_team,
         y=categories,
-        x=away_log_scaled,  # Use log-scaled values for visualization
-        text=[format_value(value, category) for value, category in zip(away, categories)],  # Format based on category
+        x=away_log_scaled,
+        text=[format_value(v, c) for v, c in zip(away, categories)],
         textinfo='text',
-        marker=dict(color=away_color)
+        textfont=dict(size=14, color='white'),
+        marker=dict(color=away_color, line=dict(width=1.5, color='rgba(255,255,255,0.3)'))
     ))
 
-    # Customize layout
     fig.update_layout(
-        title="Match Overview",
-        height=1000  # Adjust height
+        template='plotly_dark',
+        paper_bgcolor='#0E1117',
+        plot_bgcolor='#0E1117',
+        height=920,
+        margin=dict(l=20, r=20, t=40, b=20),
+        legend=dict(orientation='h', x=0.5, xanchor='center', y=1.02, font=dict(size=14)),
+        font=dict(family='Segoe UI', size=13)
     )
 
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
 
 
 
@@ -326,7 +411,6 @@ with tab2:
     xg =  xg[xg.period != 5]
     xg.rename(columns = {'shot_statsbomb_xg':'xG', 'shot_outcome':'result'}, inplace = True)
     xg.sort_values(by='team', inplace=True)
-    xg.head()
 
     hteam = str(match_details['home_team'].iloc[0])
     ateam = str(match_details['away_team'].iloc[0])
@@ -367,12 +451,10 @@ with tab2:
     goal_scorers.columns = ['Scorers','Minute','Team','Goal Type']
 
     goal_scorers = goal_scorers.sort_values('Minute')
-    st.write('Score Board')
-   
-    st.dataframe(goal_scorers,hide_index=True)
-    #st.markdown(goal_scorers.style.hide(axis="index").to_html(), unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Score Board</div>', unsafe_allow_html=True)
+    st.dataframe(goal_scorers, hide_index=True, use_container_width=True)
 
-    st.title('XGoals Analysis')
+    st.markdown('<div class="section-title">xGoals Race</div>', unsafe_allow_html=True)
 
     # Create the figure
     fig = go.Figure()
@@ -415,28 +497,31 @@ with tab2:
                            arrowcolor='white')
 
 
-    # Customize the chart layout
-    fig.update_layout(
-        title={
-            'text': f"{hteam} - {ateam} ({str(match_details['home_score'].iloc[0])} - {str(match_details['away_score'].iloc[0])})",
-            'y':0.95,
-            'x':0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {'size': 18, 'color': 'white'}
-        },
-        annotations=[dict(text= str(match_details['competition_stage'].iloc[0]) , xref='paper', x=0.125, y=0.92, showarrow=False, font=dict(size=18))],
-        xaxis_title='Minutes',
-        yaxis_title='Expected Goals (xG)',
-        xaxis=dict(tickvals=[0, 15, 30, 45, 60, 75, 90]),
-        yaxis=dict(tickvals=[0, 0.5, 1, 1.5, 2, 2.5, 3]),
-        #legend_title='Total Expected Goals (xG)',
-        #legend=dict(x=0.02, y=0.98),
-        template='plotly_white'
+    # Add competition stage annotation without overwriting goal scorer annotations
+    fig.add_annotation(
+        text=str(match_details['competition_stage'].iloc[0]),
+        xref='paper', x=0.125, y=0.92, showarrow=False, font=dict(size=18)
     )
 
-    # Display the plot in Streamlit
-    st.plotly_chart(fig)
+    fig.update_layout(
+        template='plotly_dark',
+        paper_bgcolor='#0E1117',
+        plot_bgcolor='#161b27',
+        title=dict(
+            text=f"{hteam} vs {ateam}",
+            x=0.5, xanchor='center', font=dict(size=18, color='white')
+        ),
+        xaxis_title='Minute',
+        yaxis_title='Cumulative xG',
+        xaxis=dict(tickvals=[0, 15, 30, 45, 60, 75, 90], gridcolor='#2a2f3e'),
+        yaxis=dict(tickvals=[0, 0.5, 1, 1.5, 2, 2.5, 3], gridcolor='#2a2f3e'),
+        legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.12, font=dict(size=13)),
+        margin=dict(l=20, r=20, t=60, b=20),
+        height=480,
+        font=dict(family='Segoe UI', size=12, color='#c7d5cc')
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
     #Xgoals Pitch
@@ -506,7 +591,8 @@ with tab2:
                 pitch.scatter(x, y, edgecolors=color, facecolors='none', linewidth=2, s=size, ax=ax1)
 
         # Set title for the home team plot
-        ax1.set_title(f"{str(match_details['home_team'].iloc[0])} xG: {str(round(home_xg_cumu[-1], 2))}", 
+        home_xg_total = round(home_xg_cumu[-1], 2) if len(home_xg_cumu) > 0 else 0.0
+        ax1.set_title(f"{str(match_details['home_team'].iloc[0])} xG: {home_xg_total}",
                       size=20, color='white')
         ax1.set_axis_off()
 
@@ -541,7 +627,8 @@ with tab2:
                 pitch.scatter(x, y, edgecolors=color, facecolors='none', linewidth=2, s=size, ax=ax2)
 
         # Set title for the away team plot
-        ax2.set_title(f"{str(match_details['away_team'].iloc[0])} xG: {str(round(away_xg_cumu[-1], 2))}", 
+        away_xg_total = round(away_xg_cumu[-1], 2) if len(away_xg_cumu) > 0 else 0.0
+        ax2.set_title(f"{str(match_details['away_team'].iloc[0])} xG: {away_xg_total}",
                       size=20, color='white')
         ax2.set_axis_off()
 
@@ -569,39 +656,32 @@ with tab3:
 
     num_shots = len(shots_home)
 
-    # Display the team name and the number of shots
-    st.title(f"**{str(match_details['home_team'].iloc[0])} Shots: {num_shots}**")
+    st.markdown(f'<div class="section-title">🏠 {home_team} — Shots: {num_shots}</div>', unsafe_allow_html=True)
 
     # Calculate the number of shots on target and off target
     on_target = shots_home[shots_home['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
     off_target = shots_home[~shots_home['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
 
-    # Pie chart for shots distribution (On Target vs Off Target)
-    labels = ['On Target', 'Off Target']
-    values = [on_target, off_target]
-    colors = ['#FF4B4B', '#FAFAFA']
-
-    # Create a donut chart using Plotly
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.6, marker=dict(colors=colors))])
-
-    # Update layout for donut chart
-    fig.update_layout(
-        title_text="Shots On Target vs Off Target",
-        annotations=[dict(text=str(match_details['home_team'].iloc[0]), x=0.5, y=0.5, font_size=20, showarrow=False)],
-        showlegend=True
-    )
-
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
+    col_pie, _ = st.columns([1, 2])
+    with col_pie:
+        fig = go.Figure(data=[go.Pie(
+            labels=['On Target', 'Off Target'],
+            values=[on_target, off_target], hole=.65,
+            marker=dict(colors=[home_color, '#2a2f3e']), textfont=dict(size=14)
+        )])
+        fig.update_layout(
+            template='plotly_dark', paper_bgcolor='#0E1117',
+            annotations=[dict(text=f"<b>{home_team}</b>", x=0.5, y=0.5, font_size=13, showarrow=False, font_color='white')],
+            legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.05),
+            margin=dict(l=10, r=10, t=30, b=10), height=280
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
 
 
 
-# Set up your dataframes shots_home and match_details beforehand
-
-    # Streamlit title
-    st.title(f"{str(match_details['home_team'].iloc[0])} Shots Visualization")
+    st.markdown(f'<div class="section-title">{home_team} Shot Map</div>', unsafe_allow_html=True)
 
     # Create the figure and axes with the desired figsize
     fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
@@ -656,35 +736,28 @@ with tab3:
 
     num_shots = len(shots_away)
 
-    # Display the team name and the number of shots
-    st.title(f"**{str(match_details['away_team'].iloc[0])} Shots: {num_shots}**")
+    st.markdown(f'<div class="section-title">✈️ {away_team} — Shots: {num_shots}</div>', unsafe_allow_html=True)
 
     # Calculate the number of shots on target and off target
     on_target = shots_away[shots_away['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
     off_target = shots_away[~shots_away['shot_outcome'].isin(['Goal', 'Saved'])].shape[0]
 
-    # Pie chart for shots distribution (On Target vs Off Target)
-    labels = ['On Target', 'Off Target']
-    values = [on_target, off_target]
-    colors = ['#FF4B4B', '#FAFAFA']
+    col_pie2, _ = st.columns([1, 2])
+    with col_pie2:
+        fig = go.Figure(data=[go.Pie(
+            labels=['On Target', 'Off Target'],
+            values=[on_target, off_target], hole=.65,
+            marker=dict(colors=[away_color, '#2a2f3e']), textfont=dict(size=14)
+        )])
+        fig.update_layout(
+            template='plotly_dark', paper_bgcolor='#0E1117',
+            annotations=[dict(text=f"<b>{away_team}</b>", x=0.5, y=0.5, font_size=13, showarrow=False, font_color='white')],
+            legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.05),
+            margin=dict(l=10, r=10, t=30, b=10), height=280
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Create a donut chart using Plotly
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.6, marker=dict(colors=colors))])
-
-    # Update layout for donut chart
-    fig.update_layout(
-        title_text="Shots On Target vs Off Target",
-        annotations=[dict(text=str(match_details['away_team'].iloc[0]), x=0.5, y=0.5, font_size=20, showarrow=False)],
-        showlegend=True
-    )
-
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
-
-
-
-    # Streamlit title
-    st.title(f"{str(match_details['away_team'].iloc[0])} Shots Visualization")
+    st.markdown(f'<div class="section-title">{away_team} Shot Map</div>', unsafe_allow_html=True)
 
     # Create the figure and axes with the desired figsize
     fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
@@ -752,7 +825,6 @@ with tab4:
     # Time when the first substituion took place
     first_sub_home_minute = subs_home['minute'].min()
     first_sub_home_minute_df = subs_home[subs_home['minute'] == first_sub_home_minute]
-    first_sub_home_second = first_sub_home_minute_df['second'].min()
     # Filter oute the data for generating pass network before the first substitution takes place
     successful_home = successful_home[(successful_home['minute']<=first_sub_home_minute-1) ]
     pass_loc_home = successful_home['location']
@@ -783,8 +855,7 @@ with tab4:
 
     num_passes = len(passes_home)
 
-    # Display the team name and the number of shots
-    st.title(f"**{str(match_details['home_team'].iloc[0])} Passes: {num_passes}**")
+    st.markdown(f'<div class="section-title">🏠 {home_team} — Passes: {num_passes}</div>', unsafe_allow_html=True)
 
   
 
@@ -795,27 +866,26 @@ with tab4:
     succesfull = passes_home[passes_home['pass_outcome'].isna()].shape[0]
     not_succesfull = passes_home[~passes_home['pass_outcome'].isna()].shape[0]
 
-    # Pie chart for shots distribution (On Target vs Off Target)
-    labels = ['Succesfull', 'Not Succesfull']
-    values = [succesfull, not_succesfull]
-    colors = ['#FF4B4B', '#FAFAFA']
+    col_pass1, _ = st.columns([1, 2])
+    with col_pass1:
+        fig = go.Figure(data=[go.Pie(
+            labels=['Successful', 'Unsuccessful'],
+            values=[succesfull, not_succesfull], hole=.65,
+            marker=dict(colors=[home_color, '#2a2f3e']), textfont=dict(size=14)
+        )])
+        fig.update_layout(
+            template='plotly_dark', paper_bgcolor='#0E1117',
+            annotations=[dict(text=f"<b>{home_team}</b>", x=0.5, y=0.5, font_size=13, showarrow=False, font_color='white')],
+            legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.05),
+            margin=dict(l=10, r=10, t=30, b=10), height=280
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Create a donut chart using Plotly
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.6, marker=dict(colors=colors))])
-
-    # Update layout for donut chart
-    fig.update_layout(
-        title_text="Passes",
-        annotations=[dict(text=str(match_details['away_team'].iloc[0]), x=0.5, y=0.5, font_size=20, showarrow=False)],
-        showlegend=True
-    )
-
-    st.plotly_chart(fig)
-
+    st.markdown(f'<div class="section-title">{home_team} Pass Network</div>', unsafe_allow_html=True)
 
     # Create the pitch
-    pitch_color = '#0E1117'  # Same color as the pitch
-    line_color = '#c7d5cc'   # Pitch lines color
+    pitch_color = '#0E1117'
+    line_color = '#c7d5cc'
     pitch = Pitch(pitch_type='statsbomb', pitch_color=pitch_color, line_color=line_color)
 
     # Create a matplotlib figure and axes
@@ -937,7 +1007,6 @@ with tab4:
     # Time when the first substituion took place
     first_sub_away_minute = subs_away['minute'].min()
     first_sub_away_minute_df = subs_away[subs_away['minute'] == first_sub_away_minute]
-    first_sub_away_second = first_sub_away_minute_df['second'].min()
     # Filter oute the data for generating pass network before the first substitution takes place
     successful_away = successful_away[(successful_away['minute']<=first_sub_away_minute-1) ]
     pass_loc_away = successful_away['location']
@@ -968,8 +1037,7 @@ with tab4:
 
     num_passes = len(passes_away)
 
-    # Display the team name and the number of shots
-    st.title(f"**{str(match_details['away_team'].iloc[0])} Passes: {num_passes}**")
+    st.markdown(f'<div class="section-title">✈️ {away_team} — Passes: {num_passes}</div>', unsafe_allow_html=True)
 
   
 
@@ -980,32 +1048,31 @@ with tab4:
     succesfull = passes_away[passes_away['pass_outcome'].isna()].shape[0]
     not_succesfull = passes_away[~passes_away['pass_outcome'].isna()].shape[0]
 
-    # Pie chart for shots distribution (On Target vs Off Target)
-    labels = ['Succesfull', 'Not Succesfull']
-    values = [succesfull, not_succesfull]
-    colors = ['#FF4B4B', '#FAFAFA']
+    col_pass2, _ = st.columns([1, 2])
+    with col_pass2:
+        fig = go.Figure(data=[go.Pie(
+            labels=['Successful', 'Unsuccessful'],
+            values=[succesfull, not_succesfull], hole=.65,
+            marker=dict(colors=[away_color, '#2a2f3e']), textfont=dict(size=14)
+        )])
+        fig.update_layout(
+            template='plotly_dark', paper_bgcolor='#0E1117',
+            annotations=[dict(text=f"<b>{away_team}</b>", x=0.5, y=0.5, font_size=13, showarrow=False, font_color='white')],
+            legend=dict(orientation='h', x=0.5, xanchor='center', y=-0.05),
+            margin=dict(l=10, r=10, t=30, b=10), height=280
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Create a donut chart using Plotly
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.6, marker=dict(colors=colors))])
-
-    # Update layout for donut chart
-    fig.update_layout(
-        title_text="Passes",
-        annotations=[dict(text=str(match_details['away_team'].iloc[0]), x=0.5, y=0.5, font_size=20, showarrow=False)],
-        showlegend=True
-    )
-
-    st.plotly_chart(fig)
-
+    st.markdown(f'<div class="section-title">{away_team} Pass Network</div>', unsafe_allow_html=True)
 
     # Create the pitch
-    pitch_color = '#0E1117'  # Same color as the pitch
-    line_color = '#c7d5cc'   # Pitch lines color
+    pitch_color = '#0E1117'
+    line_color = '#c7d5cc'
     pitch = Pitch(pitch_type='statsbomb', pitch_color=pitch_color, line_color=line_color)
-    
+
     # Create a matplotlib figure and axes
     fig, ax = pitch.draw(figsize=(13.5, 8))
-    
+
     # Plot the arrows (representing passes)
     arrows = pitch.arrows(pass_bet_away.x, pass_bet_away.y, pass_bet_away.x_end, pass_bet_away.y_end, ax=ax,
                           width=5, headwidth=3, color='white', zorder=1, alpha=0.5)
@@ -1029,58 +1096,50 @@ with tab4:
     
     total = len(match_pass_perc)
     df_pass_perc = pd.DataFrame(columns=['Team','Def 3rd','Mid 3rd','Att 3rd'])
-    
+
     new_row = pd.DataFrame({
-        'Team': [str(match_details['home_team'].iloc[0])],
+        'Team': [str(match_details['away_team'].iloc[0])],
         'Def 3rd': [len(match_pass_perc[match_pass_perc.x <= 40])],
         'Mid 3rd': [len(match_pass_perc[(match_pass_perc['x'] > 40) & (match_pass_perc['x'] < 80)])],
         'Att 3rd': [len(match_pass_perc[match_pass_perc.x >= 80])],
         'Total': [total]
     })
-    
+
     # Calculate the percentage of passes in each third
     new_row['Def 3rd (%)'] = (new_row['Def 3rd'] / total) * 100
     new_row['Mid 3rd (%)'] = (new_row['Mid 3rd'] / total) * 100
     new_row['Att 3rd (%)'] = (new_row['Att 3rd'] / total) * 100
-    
+
     # Concatenate the new row to the existing DataFrame
     df_pass_perc = pd.concat([df_pass_perc, new_row], ignore_index=True)
-    
+
     # path effects
     path_eff = [path_effects.Stroke(linewidth=3, foreground='black'),
                 path_effects.Normal()]
-    
+
     vmin = df_pass_perc[['Def 3rd (%)', 'Mid 3rd (%)', 'Att 3rd (%)']].values.min()
     vmax = df_pass_perc[['Def 3rd (%)', 'Mid 3rd (%)', 'Att 3rd (%)']].values.max()
-    
+
     # setup a mplsoccer pitch
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_zorder=2, line_color='#c7d5cc')
     bin_statistic = pitch.bin_statistic([0], [0], statistic='count', bins=(3, 1))
-    
+
     fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
     fig.set_facecolor('#0E1117')
-    
-    # path effects
-    path_eff = [path_effects.Stroke(linewidth=3, foreground='black'),
-                path_effects.Normal()]
-    
-    
-            
+
     # fill in the bin statistics from df and plot the heatmap
     bin_statistic['statistic'] = df_pass_perc[['Def 3rd (%)', 'Mid 3rd (%)', 'Att 3rd (%)']].values
     heatmap = pitch.heatmap(bin_statistic, ax=ax, cmap='Purples', vmin=vmin, vmax=vmax)
-    annotate = pitch.label_heatmap(bin_statistic, color='white', #fontproperties=fm.prop,
+    annotate = pitch.label_heatmap(bin_statistic, color='white',
                                    path_effects=path_eff, fontsize=50, ax=ax,
                                    str_format='{0:.0f}%', ha='center', va='center')
-    
+
     st.pyplot(fig)
 
 
 
 
-
-
-        #separate start and end locations from coordinates
+    #separate start and end locations from coordinates
     match[['x', 'y']] = match['location'].apply(pd.Series)
     match[['pass_end_x', 'pass_end_y']] = match['pass_end_location'].apply(pd.Series)
     match[['carry_end_x', 'carry_end_y']] = match['carry_end_location'].apply(pd.Series)
@@ -1113,7 +1172,6 @@ with tab4:
     st.pyplot(fig)
 
 with tab5:
-    st.header("Shots - XGoals")
 
     #match shots
     match_shots = match[(match['type'] == 'Shot') & (match['period'] < 5)]
@@ -1191,7 +1249,7 @@ with tab5:
     succ_passes_by_player.columns = ['Name', 'Successful Passes']
 
     #table with successful passes
-    st.title('Successful Passes')
+    st.markdown('<div class="section-title">Successful Passes</div>', unsafe_allow_html=True)
     st.dataframe(succ_passes_by_player,hide_index=True)
 
     #passes location
@@ -1273,7 +1331,7 @@ with tab5:
 
 
 with tab6:
-    st.header("Team comparison per 15 minutes")
+    st.markdown('<div class="section-title">Team Performance per 15 Minutes</div>', unsafe_allow_html=True)
 
     # make a new column minute_per_15 to capture in which interval the match is
     def interval_minute(row):
