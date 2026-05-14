@@ -340,10 +340,24 @@ with tab1:
     h_ps, a_ps    = get_stat('Passes Completed')
 
     m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 = st.columns(10)
-    m1.metric(f"🟡 {home_team[:12]}", ""); m2.metric("Possession", f"{h_poss:.1f}%")
-    m3.metric("xGoals", f"{h_xg:.2f}"); m4.metric("Shots", int(h_sh)); m5.metric("On Target", int(h_sot))
-    m6.metric(f"🔵 {away_team[:12]}", ""); m7.metric("Possession", f"{a_poss:.1f}%")
-    m8.metric("xGoals", f"{a_xg:.2f}"); m9.metric("Shots", int(a_sh)); m10.metric("On Target", int(a_sot))
+    m1.markdown(
+        f'<div style="font-size:13px;font-weight:700;padding:6px 0 2px 0;">'
+        f'<span style="color:{home_color};font-size:22px;line-height:1;">&#9679;</span>&nbsp;{home_team[:14]}'
+        f'</div>', unsafe_allow_html=True
+    )
+    m2.metric("Possession", f"{h_poss:.1f}%")
+    m3.metric("xGoals", f"{h_xg:.2f}")
+    m4.metric("Shots", int(h_sh))
+    m5.metric("On Target", int(h_sot))
+    m6.markdown(
+        f'<div style="font-size:13px;font-weight:700;padding:6px 0 2px 0;">'
+        f'<span style="color:{away_color};font-size:22px;line-height:1;">&#9679;</span>&nbsp;{away_team[:14]}'
+        f'</div>', unsafe_allow_html=True
+    )
+    m7.metric("Possession", f"{a_poss:.1f}%")
+    m8.metric("xGoals", f"{a_xg:.2f}")
+    m9.metric("Shots", int(a_sh))
+    m10.metric("On Target", int(a_sot))
 
     st.markdown("---")
     st.markdown('<div class="section-title">Match Stats Comparison</div>', unsafe_allow_html=True)
@@ -363,6 +377,14 @@ with tab1:
             return f'{value:.2f}'
         return f'{int(value)}'
 
+    def readable_text_color(hex_color):
+        c = hex_color.lstrip('#')
+        r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+        return '#111111' if (0.299*r + 0.587*g + 0.114*b) / 255 > 0.55 else 'white'
+
+    home_text = readable_text_color(home_color)
+    away_text = readable_text_color(away_color)
+
     fig = go.Figure()
 
     fig.add_trace(go.Funnel(
@@ -371,8 +393,8 @@ with tab1:
         x=home_log_scaled,
         text=[format_value(v, c) for v, c in zip(home, categories)],
         textinfo='text',
-        textfont=dict(size=14, color='white'),
-        marker=dict(color=home_color, line=dict(width=1.5, color='rgba(255,255,255,0.3)'))
+        textfont=dict(size=14, color=home_text),
+        marker=dict(color=home_color, line=dict(width=1.5, color='rgba(128,128,128,0.4)'))
     ))
 
     fig.add_trace(go.Funnel(
@@ -381,8 +403,8 @@ with tab1:
         x=away_log_scaled,
         text=[format_value(v, c) for v, c in zip(away, categories)],
         textinfo='text',
-        textfont=dict(size=14, color='white'),
-        marker=dict(color=away_color, line=dict(width=1.5, color='rgba(255,255,255,0.3)'))
+        textfont=dict(size=14, color=away_text),
+        marker=dict(color=away_color, line=dict(width=1.5, color='rgba(128,128,128,0.4)'))
     ))
 
     fig.update_layout(
@@ -570,7 +592,7 @@ with tab2:
         )
 
         # Create the figure and axis
-        fig, ax1 = plt.subplots(figsize=(10, 6))
+        fig, ax1 = plt.subplots(figsize=(6, 4))
 
         # Draw the pitch for the home team
         pitch.draw(ax=ax1)
@@ -606,7 +628,7 @@ with tab2:
     # Away team plot
     with col2:
         # Set up the pitch and figure for the away team
-        fig, ax2 = plt.subplots(figsize=(10, 6))
+        fig, ax2 = plt.subplots(figsize=(6, 4))
 
         # Draw the pitch for the away team
         pitch.draw(ax=ax2)
@@ -684,7 +706,7 @@ with tab3:
     st.markdown(f'<div class="section-title">{home_team} Shot Map</div>', unsafe_allow_html=True)
 
     # Create the figure and axes with the desired figsize
-    fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(9, 5.5), constrained_layout=True)
 
     # Set up the pitch (without orientation) with a background color that matches the pitch
     pitch_color = '#0E1117'  # Same color as the pitch
@@ -760,7 +782,7 @@ with tab3:
     st.markdown(f'<div class="section-title">{away_team} Shot Map</div>', unsafe_allow_html=True)
 
     # Create the figure and axes with the desired figsize
-    fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(9, 5.5), constrained_layout=True)
 
     # Set up the pitch (without orientation) with a background color that matches the pitch
     pitch_color = '#0E1117'  # Same color as the pitch
@@ -889,7 +911,7 @@ with tab4:
     pitch = Pitch(pitch_type='statsbomb', pitch_color=pitch_color, line_color=line_color)
 
     # Create a matplotlib figure and axes
-    fig, ax = pitch.draw(figsize=(13.5, 8))
+    fig, ax = pitch.draw(figsize=(9, 5.5))
 
     # Plot the arrows (representing passes)
     arrows = pitch.arrows(pass_bet_home.x, pass_bet_home.y, pass_bet_home.x_end, pass_bet_home.y_end, ax=ax,
@@ -941,7 +963,7 @@ with tab4:
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_zorder=2, line_color='#c7d5cc')
     bin_statistic = pitch.bin_statistic([0], [0], statistic='count', bins=(3, 1))
     
-    fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
+    fig, ax = pitch.draw(figsize=(10, 6),constrained_layout=True, tight_layout=False)
     fig.set_facecolor('#0E1117')
     
     # path effects
@@ -977,7 +999,7 @@ with tab4:
 
     #set up the pitch
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_zorder=2, line_color='#c7d5cc')
-    fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
+    fig, ax = pitch.draw(figsize=(10, 6),constrained_layout=True, tight_layout=False)
     fig.set_facecolor('#D3D3D3')
 
     #plot the passes
@@ -1071,7 +1093,7 @@ with tab4:
     pitch = Pitch(pitch_type='statsbomb', pitch_color=pitch_color, line_color=line_color)
 
     # Create a matplotlib figure and axes
-    fig, ax = pitch.draw(figsize=(13.5, 8))
+    fig, ax = pitch.draw(figsize=(9, 5.5))
 
     # Plot the arrows (representing passes)
     arrows = pitch.arrows(pass_bet_away.x, pass_bet_away.y, pass_bet_away.x_end, pass_bet_away.y_end, ax=ax,
@@ -1124,7 +1146,7 @@ with tab4:
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_zorder=2, line_color='#c7d5cc')
     bin_statistic = pitch.bin_statistic([0], [0], statistic='count', bins=(3, 1))
 
-    fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
+    fig, ax = pitch.draw(figsize=(10, 6),constrained_layout=True, tight_layout=False)
     fig.set_facecolor('#0E1117')
 
     # fill in the bin statistics from df and plot the heatmap
@@ -1155,7 +1177,7 @@ with tab4:
 
     #set up the pitch
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_zorder=2, line_color='#c7d5cc')
-    fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
+    fig, ax = pitch.draw(figsize=(10, 6),constrained_layout=True, tight_layout=False)
     fig.set_facecolor('#D3D3D3')
 
     #plot the passes
@@ -1210,7 +1232,7 @@ with tab5:
         )
 
         # Create the figure and axis
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    fig, ax1 = plt.subplots(figsize=(6, 4))
 
         # Draw the pitch for the home team
     pitch.draw(ax=ax1)
@@ -1273,7 +1295,7 @@ with tab5:
 
     #set up the pitch
     pitch = Pitch(pitch_type='statsbomb', pitch_color=pitch_color, line_zorder=2, line_color=line_color)
-    fig, ax = pitch.draw(figsize=(16, 11),constrained_layout=True, tight_layout=False)
+    fig, ax = pitch.draw(figsize=(10, 6),constrained_layout=True, tight_layout=False)
     fig.set_facecolor(pitch_color)
 
     #plot the passes
@@ -1302,7 +1324,7 @@ with tab5:
     location = pd.DataFrame(valid_location.to_list(), columns=['x', 'y'])
 
     # Create the figure and axes with the desired figsize
-    fig, ax = plt.subplots(figsize=(13.5, 8), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(9, 5.5), constrained_layout=True)
 
     # Set up the pitch (without orientation)
     pitch = Pitch(pitch_type='statsbomb', pitch_color='#0E1117', line_color='#c7d5cc')
